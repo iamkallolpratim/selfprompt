@@ -9,7 +9,7 @@ from typing import Any
 from selfprompt.core.events import Turn
 
 
-@dataclass(slots=True)
+@dataclass
 class Budget:
     """Hard limits on how far a loop is allowed to run.
 
@@ -32,7 +32,7 @@ class Budget:
         return None
 
 
-@dataclass(slots=True)
+@dataclass
 class StopCondition:
     """A user-supplied predicate that ends the loop early, on success.
 
@@ -49,7 +49,7 @@ class StopCondition:
         return self.check(turns)
 
 
-@dataclass(slots=True)
+@dataclass
 class LoopResult:
     """What a `GoalLoop.run()` call hands back."""
 

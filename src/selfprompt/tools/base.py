@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 
-@dataclass(slots=True)
+@dataclass
 class ToolResult:
     ok: bool
     output: str

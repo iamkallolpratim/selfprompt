@@ -25,7 +25,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 
-@dataclass(slots=True)
+@dataclass
 class ProjectConfig:
     provider: str = "anthropic"
     model: str = "claude-sonnet-5"

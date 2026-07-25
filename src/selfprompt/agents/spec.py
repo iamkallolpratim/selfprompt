@@ -11,7 +11,7 @@ from typing import Any
 import yaml
 
 
-@dataclass(slots=True)
+@dataclass
 class AgentSpec:
     name: str
     role: str

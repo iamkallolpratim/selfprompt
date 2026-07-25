@@ -23,7 +23,7 @@ from selfprompt.memory.file_backend import FileMemory
 EmbedFn = Callable[[str], list[float]]
 
 
-@dataclass(slots=True)
+@dataclass
 class _Record:
     text: str
     vector: list[float]

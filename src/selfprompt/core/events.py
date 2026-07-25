@@ -9,7 +9,7 @@ Code, Codex, or a bare Python script.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -24,7 +24,7 @@ class ActionType(str, Enum):
     ABORT = "abort"             # give up, budget/stop condition hit
 
 
-@dataclass(slots=True)
+@dataclass
 class Observation:
     """What the loop currently sees: goal state, prior results, environment."""
 
@@ -32,7 +32,7 @@ class Observation:
     raw: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class Critique:
     """Self-assessment of progress before deciding the next action.
 
@@ -46,7 +46,7 @@ class Critique:
     notes: str = ""
 
 
-@dataclass(slots=True)
+@dataclass
 class Action:
     """The next thing to do, decided after observation + critique."""
 
@@ -57,7 +57,7 @@ class Action:
     delegate_agent: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass
 class Turn:
     """One full cycle of the loop, persisted verbatim to memory."""
 
@@ -69,7 +69,7 @@ class Turn:
     tokens_used: int = 0
     cost_usd: float = 0.0
     timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
 
     def to_dict(self) -> dict[str, Any]:

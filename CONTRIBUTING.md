@@ -5,7 +5,7 @@
 ```bash
 git clone https://github.com/iamkallolpratim/selfprompt
 cd selfprompt
-python3.11 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # any Python 3.9+
 pip install -e ".[dev]"
 pytest
 ```

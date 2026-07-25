@@ -15,14 +15,14 @@ Two things live here:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 from selfprompt.connectors.client import SelfPromptClient
 from selfprompt.core.llm import CallbackProvider
 from selfprompt.core.state import Budget
 from selfprompt.tools.registry import Permission
 
-HostCompleteFn = Callable[[str, str | None], str]
+HostCompleteFn = Callable[[str, Optional[str]], str]
 
 
 def claude_code_provider(complete_fn: HostCompleteFn) -> CallbackProvider:

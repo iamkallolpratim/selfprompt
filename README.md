@@ -29,7 +29,7 @@ pip install "selfprompt[anthropic] @ git+https://github.com/iamkallolpratim/self
 # Local clone, editable (for contributing / hacking on the loop itself)
 git clone https://github.com/iamkallolpratim/selfprompt.git
 cd selfprompt
-python3.11 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # any Python 3.9+
 pip install -e ".[dev]"
 
 # Build a wheel and share the file directly
