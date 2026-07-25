@@ -115,6 +115,49 @@ def cmd_run(args: argparse.Namespace) -> None:
     sys.exit(0 if result.finished else 1)
 
 
+def _step_loop(config: ProjectConfig, goal_id: str, max_turns: int | None) -> GoalLoop:
+    from selfprompt.core.llm import NullProvider
+
+    return GoalLoop(
+        goal_id,
+        llm=NullProvider(),
+        tools=ToolRegistry(_default_tools()),
+        memory=FileMemory(config.memory_root),
+        budget=Budget(max_turns=max_turns or config.max_turns),
+        goal_id=goal_id,
+    )
+
+
+def cmd_step(args: argparse.Namespace) -> None:
+    """Host-driven mode: return the next prompt without calling an LLM.
+
+    For a caller that IS the model (e.g. Claude Code answering
+    `/selfprompt` on the user's own subscription instead of a second
+    billed API key) -- see `record-turn` for the other half.
+    """
+    import json as _json
+
+    config = ProjectConfig.load()
+    loop = _step_loop(config, args.goal_id, args.max_turns)
+    print(_json.dumps(loop.next_step()))
+
+
+def cmd_record_turn(args: argparse.Namespace) -> None:
+    import json as _json
+
+    config = ProjectConfig.load()
+    loop = _step_loop(config, args.goal_id, args.max_turns)
+    data = _json.loads(args.data)
+    result = loop.record_step(
+        turn_index=args.turn_index,
+        observation=data.get("observation", ""),
+        critique=data.get("critique", {}),
+        action=data["action"],
+        result=data.get("result", ""),
+    )
+    print(_json.dumps(result))
+
+
 def cmd_status(args: argparse.Namespace) -> None:
     config = ProjectConfig.load()
     root = Path(config.memory_root)
@@ -159,6 +202,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--yes", action="store_true", help="Auto-approve dangerous tool calls")
     p_run.add_argument("--json", action="store_true", help="Print machine-readable JSON result only")
     p_run.set_defaults(func=cmd_run)
+
+    p_step = sub.add_parser(
+        "step",
+        help="Host-driven mode: return the next prompt without calling an LLM (see 'record-turn')",
+    )
+    p_step.add_argument("goal_id", help="Goal id to advance (matches --goal-id used elsewhere)")
+    p_step.add_argument("--max-turns", type=int, default=None)
+    p_step.set_defaults(func=cmd_step)
+
+    p_record = sub.add_parser(
+        "record-turn",
+        help="Host-driven mode: persist a turn decided externally (companion to 'step')",
+    )
+    p_record.add_argument("goal_id")
+    p_record.add_argument("--turn-index", type=int, required=True)
+    p_record.add_argument(
+        "--data",
+        required=True,
+        help='JSON: {"observation": "...", "critique": {...}, "action": {...}, "result": "..."}',
+    )
+    p_record.add_argument("--max-turns", type=int, default=None)
+    p_record.set_defaults(func=cmd_record_turn)
 
     p_status = sub.add_parser("status", help="Show progress for a goal (or list all goals)")
     p_status.add_argument("goal_id", nargs="?", default=None)

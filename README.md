@@ -10,12 +10,23 @@ bare Python script, because it doesn't assume any of them.
 
 ```bash
 pip install git+https://github.com/iamkallolpratim/selfprompt.git
+mkdir -p ~/.claude/skills && cp -r .claude/skills/selfprompt ~/.claude/skills/
 selfprompt init
-selfprompt run "refactor payments/legacy.py to remove the global singleton, keep tests green" --provider anthropic
 ```
 
-That's the whole quickstart. Under two minutes if `ANTHROPIC_API_KEY` is
-already set.
+Then, inside Claude Code:
+
+```
+/selfprompt refactor payments/legacy.py to remove the global singleton, keep tests green
+```
+
+That's the whole quickstart — under two minutes, **no API key, no second
+model bill**. Claude Code's own session drives every turn; `selfprompt`
+only handles memory, budgets, and stop conditions. This is the recommended
+way to run SelfPrompt. See [How it runs (host-driven mode)](#how-it-runs-host-driven-mode)
+for what's actually happening, and [Connectors](#connectors) for other
+hosts (Codex, plain Python/TS, or a fully unattended subprocess mode with
+its own API key).
 
 Not on PyPI yet — pick whichever install fits:
 
@@ -132,19 +143,64 @@ turn — and the next run, next week — sees it.
 
 ## Quickstart
 
+**Recommended: inside Claude Code, no API key.**
+
 ```bash
-pip install git+https://github.com/iamkallolpratim/selfprompt.git   # add [anthropic] or [openai] extras for real model backends
-selfprompt init                     # writes .selfprompt/config.yaml
-selfprompt run "your goal here"     # runs with .selfprompt/config.yaml settings
+pip install git+https://github.com/iamkallolpratim/selfprompt.git
+mkdir -p ~/.claude/skills && cp -r .claude/skills/selfprompt ~/.claude/skills/
+cd your-project && selfprompt init
+```
+
+Then just talk to Claude Code:
+
+```
+/selfprompt refactor payments/legacy.py to remove the global singleton, keep tests green
+```
+
+See [How it runs (host-driven mode)](#how-it-runs-host-driven-mode) below
+for what `/selfprompt` actually does.
+
+**Alternative: unattended subprocess, own API key** — for background jobs,
+CI, or anything outside an interactive Claude Code session:
+
+```bash
+pip install "selfprompt[anthropic] @ git+https://github.com/iamkallolpratim/selfprompt.git"
+selfprompt init
+export ANTHROPIC_API_KEY="sk-ant-..."
+selfprompt run "your goal here"
 selfprompt status                   # list goals with recorded progress
 selfprompt status <goal-id>         # show full progress + lessons for one goal
 ```
 
-Try it fully offline first with the zero-setup mock provider:
+Try either path fully offline first with the zero-setup mock provider:
 
 ```bash
 selfprompt run "say hello" --provider mock
 ```
+
+## How it runs (host-driven mode)
+
+`/selfprompt <goal>` inside Claude Code never calls a second model. Instead
+the running Claude Code session *is* the model for the loop:
+
+1. `selfprompt step <goal_id>` returns the next prompt (goal, tools,
+   memory, recent history) as JSON — no LLM call happens here.
+2. Claude Code reads that prompt and decides the turn itself — the same
+   `{observation, critique, action}` JSON contract a real `LLMProvider`
+   would return.
+3. Claude Code performs the action with its own Read/Write/Edit/Bash
+   tools — your normal Claude Code permission prompts apply, not a second
+   permission system.
+4. `selfprompt record-turn <goal_id> --turn-index N --data '{...}'`
+   persists the turn to memory and reports whether the loop is
+   finished/aborted.
+5. Repeat from step 1 until `step` reports `done: true`.
+
+This is exactly [`GoalLoop.next_step()`](src/selfprompt/core/loop.py) /
+[`.record_step()`](src/selfprompt/core/loop.py) under the hood — the full
+mechanics (budgets, stop conditions, memory, lesson extraction) apply the
+same as the subprocess `run()` path, just without a second model in the
+loop. Full walkthrough: [`.claude/skills/selfprompt/SKILL.md`](.claude/skills/selfprompt/SKILL.md).
 
 ### As a library
 
@@ -210,9 +266,8 @@ and `.run(**kwargs) -> ToolResult` — no base class required.
 ## Connectors
 
 - **Claude Code**: [`.claude/skills/selfprompt/SKILL.md`](.claude/skills/selfprompt/SKILL.md) —
-  the loop's model calls route through the current Claude Code session via
-  `selfprompt.connectors.claude_code.claude_code_provider()`, so no second
-  API key is needed.
+  `/selfprompt <goal>`, host-driven mode by default (no API key — see
+  [How it runs](#how-it-runs-host-driven-mode) above).
 - **Codex / OpenAI Agents SDK**: [`selfprompt.connectors.codex`](src/selfprompt/connectors/codex.py) —
   `SELFPROMPT_TOOL_SCHEMA` + `handle_tool_call()` expose the loop as one
   function-callable tool. Example registration:
@@ -316,14 +371,34 @@ That's `permission_mode: ask` (the default) working as intended — see
 `.selfprompt/config.yaml`, or pass `--yes` to `selfprompt run`, only in
 environments you trust running unattended.
 
-### I don't have an API key yet and just want to see it run
+### I don't have an API key and don't want one
+
+Use the recommended path: `/selfprompt <goal>` inside Claude Code (see
+[Quickstart](#quickstart) and [How it runs](#how-it-runs-host-driven-mode)).
+It runs entirely on your existing Claude Code session — `selfprompt run
+--provider anthropic`/`openai` is a *different*, separately billed path,
+only needed for unattended/background use outside Claude Code.
+
+To sanity-check the install itself with zero setup either way:
 
 ```bash
 selfprompt run "say hello" --provider mock
 ```
 
-The mock provider never makes a network call — good for confirming the
-install itself works before wiring up a real model.
+The mock provider never makes a network call.
+
+### `TypeError: Could not resolve authentication method...` from `selfprompt run --provider anthropic`
+
+You used subprocess mode without setting an API key — that mode needs its
+own, separate from your Claude Code login:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+If you don't want a second API key at all, use host-driven mode instead —
+`/selfprompt <goal>` inside Claude Code needs none. See
+[Quickstart](#quickstart).
 
 ## License
 

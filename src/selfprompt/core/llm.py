@@ -133,3 +133,20 @@ class MockProvider:
             text = self._responses[min(self._index, len(self._responses) - 1)]
             self._index += 1
         return LLMResponse(text=text, input_tokens=len(prompt.split()), output_tokens=len(text.split()))
+
+
+class NullProvider:
+    """Placeholder for host-driven loops that never call `run()`.
+
+    `GoalLoop` requires an `llm` at construction time even when only
+    `next_step()`/`record_step()` are used -- e.g. when the caller itself is
+    the model (Claude Code answering `/selfprompt` on the user's own
+    subscription). This raises if `.complete()` is ever actually invoked,
+    which would mean `run()` was called by mistake in that mode.
+    """
+
+    def complete(self, prompt: str, *, system: str | None = None) -> LLMResponse:
+        raise RuntimeError(
+            "NullProvider.complete() was called -- use next_step()/record_step() "
+            "instead of run() when there is no LLMProvider configured."
+        )

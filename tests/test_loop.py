@@ -1,7 +1,10 @@
+import pytest
+
 from selfprompt.core.events import ActionType
-from selfprompt.core.llm import MockProvider
+from selfprompt.core.llm import MockProvider, NullProvider
 from selfprompt.core.loop import GoalLoop
 from selfprompt.core.state import Budget, StopCondition
+from selfprompt.memory.file_backend import FileMemory
 from selfprompt.tools.base import ToolResult
 from selfprompt.tools.registry import ToolRegistry
 
@@ -99,3 +102,83 @@ def test_loop_handles_malformed_llm_response():
     assert not result.finished
     assert result.turns[0].critique.progress_made is False
     assert result.turns[0].action.type is ActionType.MESSAGE
+
+
+def test_next_step_returns_prompt_when_not_done(tmp_path):
+    loop = GoalLoop(
+        "goal", llm=NullProvider(), memory=FileMemory(tmp_path), goal_id="host-driven"
+    )
+    step = loop.next_step()
+    assert step["done"] is False
+    assert step["turn_index"] == 0
+    assert "GOAL" in step["prompt"]
+
+
+def test_next_step_done_after_recorded_finish(tmp_path):
+    loop = GoalLoop(
+        "goal", llm=NullProvider(), memory=FileMemory(tmp_path), goal_id="host-driven"
+    )
+    loop.record_step(
+        turn_index=0,
+        observation="done",
+        critique={"progress_made": True, "confidence": 0.9},
+        action={"type": "finish", "detail": "complete"},
+        result="goal marked complete",
+    )
+    step = loop.next_step()
+    assert step["done"] is True
+    assert "complete" in step["stop_reason"]
+
+
+def test_next_step_done_after_recorded_abort(tmp_path):
+    loop = GoalLoop(
+        "goal", llm=NullProvider(), memory=FileMemory(tmp_path), goal_id="host-driven"
+    )
+    loop.record_step(
+        turn_index=0,
+        observation="stuck",
+        critique={"progress_made": False, "confidence": 0.1},
+        action={"type": "abort", "detail": "unreachable"},
+        result="aborted: unreachable",
+    )
+    step = loop.next_step()
+    assert step["done"] is True
+    assert "aborted" in step["stop_reason"]
+
+
+def test_next_step_respects_budget_across_calls(tmp_path):
+    memory = FileMemory(tmp_path)
+    loop = GoalLoop(
+        "goal", llm=NullProvider(), memory=memory, goal_id="host-driven", budget=Budget(max_turns=1)
+    )
+    loop.record_step(
+        turn_index=0,
+        observation="working",
+        critique={"progress_made": True, "confidence": 0.5},
+        action={"type": "message", "detail": "still going"},
+        result="still going",
+    )
+    step = loop.next_step()
+    assert step["done"] is True
+    assert "max_turns" in step["stop_reason"]
+
+
+def test_record_step_persists_to_memory(tmp_path):
+    memory = FileMemory(tmp_path)
+    loop = GoalLoop("goal", llm=NullProvider(), memory=memory, goal_id="host-driven")
+    result = loop.record_step(
+        turn_index=0,
+        observation="obs",
+        critique={"progress_made": True, "confidence": 0.5},
+        action={"type": "message", "detail": "note"},
+        result="note",
+    )
+    assert result == {"finished": False, "aborted": False, "stop_reason": None}
+    turns = memory.load_turns("host-driven")
+    assert len(turns) == 1
+    assert turns[0].observation.summary == "obs"
+
+
+def test_null_provider_raises_if_actually_called():
+    with pytest.raises(RuntimeError):
+        NullProvider().complete("prompt")

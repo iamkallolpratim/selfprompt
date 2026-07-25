@@ -157,6 +157,82 @@ class GoalLoop:
             total_cost_usd=total_cost,
         )
 
+    def next_step(self) -> dict[str, Any]:
+        """Return the next prompt to answer, or signal the loop is already
+        done -- without calling an `LLMProvider`.
+
+        This is the host-driven counterpart to `run()`: for a caller that IS
+        the model (e.g. Claude Code answering `/selfprompt` on the user's
+        own subscription instead of a second billed API key), call this,
+        decide the JSON turn yourself using the same contract described in
+        `_DEFAULT_SYSTEM_PROMPT`, perform the action with your own tools,
+        then hand the result to `record_step`.
+        """
+        turns = list(self._memory.load_turns(self.goal_id)) if self._memory else []
+
+        if turns and turns[-1].action.type is ActionType.FINISH:
+            return {"done": True, "stop_reason": "model declared goal complete"}
+        if turns and turns[-1].action.type is ActionType.ABORT:
+            return {"done": True, "stop_reason": f"model aborted: {turns[-1].action.detail}"}
+
+        total_tokens = sum(t.tokens_used for t in turns)
+        total_cost = sum(t.cost_usd for t in turns)
+
+        exceeded = self.budget.exceeded_by(len(turns), total_tokens, total_cost)
+        if exceeded:
+            return {"done": True, "stop_reason": exceeded}
+
+        met = next((sc for sc in self.stop_conditions if sc.is_met(turns)), None)
+        if met:
+            return {"done": True, "stop_reason": f"stop condition met: {met.name}"}
+
+        return {
+            "done": False,
+            "goal_id": self.goal_id,
+            "turn_index": len(turns),
+            "system_prompt": self._system_prompt,
+            "prompt": self._build_prompt(turns),
+        }
+
+    def record_step(
+        self,
+        *,
+        turn_index: int,
+        observation: str,
+        critique: dict[str, Any],
+        action: dict[str, Any],
+        result: str,
+    ) -> dict[str, Any]:
+        """Persist one turn whose decision and result were produced
+        externally. Companion to `next_step` -- see its docstring.
+        """
+        obs = Observation(summary=observation)
+        crit = Critique(
+            progress_made=bool(critique.get("progress_made", True)),
+            confidence=float(critique.get("confidence", 0.5)),
+            issues=list(critique.get("issues", [])),
+            notes=critique.get("notes", ""),
+        )
+        act = Action(
+            type=ActionType(action["type"]),
+            detail=action.get("detail", ""),
+            tool_name=action.get("tool_name"),
+            tool_args=action.get("tool_args") or {},
+            delegate_agent=action.get("delegate_agent"),
+        )
+        turn = Turn(index=turn_index, observation=obs, critique=crit, action=act, result=result)
+        if self._memory:
+            self._memory.record_turn(self.goal_id, turn)
+
+        finished = act.type is ActionType.FINISH
+        aborted = act.type is ActionType.ABORT
+        stop_reason = None
+        if finished:
+            stop_reason = "model declared goal complete"
+        elif aborted:
+            stop_reason = f"model aborted: {act.detail}"
+        return {"finished": finished, "aborted": aborted, "stop_reason": stop_reason}
+
     # -- internals ------------------------------------------------------
 
     def _build_prompt(self, turns: list[Turn]) -> str:
