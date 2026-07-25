@@ -1,0 +1,12 @@
+# Example .selfprompt/config.yaml for use inside a Claude Code project.
+# Copy to .selfprompt/config.yaml (or run `selfprompt init` and edit).
+
+provider: anthropic
+model: claude-sonnet-5
+budget:
+  max_turns: 25
+  max_tokens: null
+  max_cost_usd: 2.00
+permission_mode: ask   # allow | ask | deny
+memory_root: .selfprompt/memory
+agents_dir: .selfprompt/agents

@@ -1,0 +1,21 @@
+{
+  "_comment": "Example function/tool registration for OpenAI Codex / Agents SDK. Register SELFPROMPT_TOOL_SCHEMA (see selfprompt.connectors.codex) and route calls through handle_tool_call().",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "selfprompt_run_goal",
+        "description": "Pursue a goal autonomously via a bounded self-prompting loop with persistent memory, instead of manually chaining prompts. Use for multi-step tasks with a clear definition of done.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "goal": { "type": "string", "description": "The goal to pursue." },
+            "max_turns": { "type": "integer", "default": 25 },
+            "multi_agent": { "type": "boolean", "default": false }
+          },
+          "required": ["goal"]
+        }
+      }
+    }
+  ]
+}

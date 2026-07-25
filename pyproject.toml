@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "selfprompt"
+version = "0.1.0"
+description = "A lightweight, framework-agnostic self-prompting / agentic loop engine with persistent memory and sub-agents."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "SelfPrompt Contributors" }]
+keywords = ["agents", "llm", "autonomous", "claude", "codex", "agentic-loop"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.40.0"]
+openai = ["openai>=1.50.0"]
+vector = ["numpy>=1.26"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "mypy>=1.10", "ruff>=0.6"]
+
+[project.scripts]
+selfprompt = "selfprompt.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/selfprompt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[[tool.mypy.overrides]]
+module = ["anthropic.*", "openai.*", "numpy.*", "yaml.*"]
+ignore_missing_imports = true
