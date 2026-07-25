@@ -24,19 +24,22 @@ bookkeeping (memory, budgets, stop conditions).
 1. If `.selfprompt/config.yaml` doesn't exist yet, run `selfprompt init` in
    the project root first.
 2. Pick a `goal_id` (slug of the user's goal, e.g. `refactor-payments`).
-3. Loop:
+3. Loop, and **narrate each turn in your visible reply** — don't just run
+   these silently and dump a final summary; the user should be able to
+   watch the loop think, the same way they'd watch you work normally:
 
    ```bash
    selfprompt step <goal_id>
    ```
 
-   This returns JSON: either `{"done": true, "stop_reason": "..."}` — stop
-   and report — or `{"done": false, "prompt": "...", "turn_index": N, ...}`.
+   Do **not** pass `--json` here — the default output is the formatted
+   prompt text, meant to be read (and shown). It's either `DONE: <reason>`
+   — stop and report — or the goal, available tools, prior memory, and
+   recent history, followed by a turn index.
 
-4. If not done: read `prompt`. It contains the goal, available tools, prior
-   memory, and recent history. **You decide the turn yourself** — produce
-   the same `{observation, critique, action}` JSON shape the prompt asks
-   for (see the contract inside `prompt`/`system_prompt`).
+4. If not done: post a short visible line stating what you observed and
+   what you're about to do this turn (this is your own `observation` +
+   `critique` + planned `action`, in plain language, not the raw JSON).
 5. **Perform the action yourself**, using your own Read/Write/Edit/Bash
    tools (normal Claude Code permissions apply — this is safer than
    shelling out, since the user sees your usual tool-approval prompts, not
@@ -51,10 +54,12 @@ bookkeeping (memory, budgets, stop conditions).
    }'
    ```
 
-   Returns `{"finished": bool, "aborted": bool, "stop_reason": str|null}`.
+   Prints a plain status line (`Turn N recorded. ...`); pass `--json` only
+   if you need the structured `{"finished", "aborted", "stop_reason"}`
+   form for your own branching logic.
 
 7. If not finished/aborted, go back to step 3. Stop the moment `step`
-   returns `done: true`, or `record-turn` reports `finished`/`aborted`.
+   reports `DONE`, or `record-turn` reports `FINISHED`/`ABORTED`.
 8. Report back to the user: finished or stopped, why, how many turns, and
    the final result. `selfprompt status <goal_id>` shows the full log if
    asked.

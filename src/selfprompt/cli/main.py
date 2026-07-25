@@ -139,7 +139,20 @@ def cmd_step(args: argparse.Namespace) -> None:
 
     config = ProjectConfig.load()
     loop = _step_loop(config, args.goal_id, args.max_turns)
-    print(_json.dumps(loop.next_step()))
+    step = loop.next_step()
+
+    if args.json:
+        print(_json.dumps(step))
+        return
+
+    if step["done"]:
+        print(f"DONE: {step['stop_reason']}")
+        return
+
+    print(f"=== selfprompt step: goal '{step['goal_id']}', turn {step['turn_index']} ===\n")
+    print(step["prompt"])
+    print(f"\n=== end prompt -- decide the turn, act, then run:\n"
+          f"selfprompt record-turn {step['goal_id']} --turn-index {step['turn_index']} --data '{{...}}' ===")
 
 
 def cmd_record_turn(args: argparse.Namespace) -> None:
@@ -155,7 +168,20 @@ def cmd_record_turn(args: argparse.Namespace) -> None:
         action=data["action"],
         result=data.get("result", ""),
     )
-    print(_json.dumps(result))
+
+    if args.json:
+        print(_json.dumps(result))
+        return
+
+    if result["finished"]:
+        print(f"Turn {args.turn_index} recorded. FINISHED: {result['stop_reason']}")
+    elif result["aborted"]:
+        print(f"Turn {args.turn_index} recorded. ABORTED: {result['stop_reason']}")
+    else:
+        print(
+            f"Turn {args.turn_index} recorded. Not done -- run "
+            f"`selfprompt step {args.goal_id}` for the next turn."
+        )
 
 
 def cmd_status(args: argparse.Namespace) -> None:
@@ -209,6 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_step.add_argument("goal_id", help="Goal id to advance (matches --goal-id used elsewhere)")
     p_step.add_argument("--max-turns", type=int, default=None)
+    p_step.add_argument("--json", action="store_true", help="Print machine-readable JSON instead of the formatted prompt")
     p_step.set_defaults(func=cmd_step)
 
     p_record = sub.add_parser(
@@ -223,6 +250,7 @@ def build_parser() -> argparse.ArgumentParser:
         help='JSON: {"observation": "...", "critique": {...}, "action": {...}, "result": "..."}',
     )
     p_record.add_argument("--max-turns", type=int, default=None)
+    p_record.add_argument("--json", action="store_true", help="Print machine-readable JSON instead of a status line")
     p_record.set_defaults(func=cmd_record_turn)
 
     p_status = sub.add_parser("status", help="Show progress for a goal (or list all goals)")

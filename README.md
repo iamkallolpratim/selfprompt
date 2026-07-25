@@ -183,18 +183,21 @@ selfprompt run "say hello" --provider mock
 `/selfprompt <goal>` inside Claude Code never calls a second model. Instead
 the running Claude Code session *is* the model for the loop:
 
-1. `selfprompt step <goal_id>` returns the next prompt (goal, tools,
-   memory, recent history) as JSON — no LLM call happens here.
+1. `selfprompt step <goal_id>` prints the next prompt (goal, tools, memory,
+   recent history) as formatted, readable text — visible in the
+   transcript, not a JSON blob — or `DONE: <reason>` if the loop is
+   already finished. No LLM call happens here; pass `--json` instead if
+   you want the machine-readable `{"done", "prompt", ...}` form.
 2. Claude Code reads that prompt and decides the turn itself — the same
-   `{observation, critique, action}` JSON contract a real `LLMProvider`
-   would return.
+   `{observation, critique, action}` contract a real `LLMProvider` would
+   return — and posts a short visible line about what it's doing.
 3. Claude Code performs the action with its own Read/Write/Edit/Bash
    tools — your normal Claude Code permission prompts apply, not a second
    permission system.
 4. `selfprompt record-turn <goal_id> --turn-index N --data '{...}'`
-   persists the turn to memory and reports whether the loop is
-   finished/aborted.
-5. Repeat from step 1 until `step` reports `done: true`.
+   persists the turn to memory and prints whether the loop is
+   finished/aborted (`--json` for the structured form).
+5. Repeat from step 1 until `step` reports `DONE`.
 
 This is exactly [`GoalLoop.next_step()`](src/selfprompt/core/loop.py) /
 [`.record_step()`](src/selfprompt/core/loop.py) under the hood — the full
