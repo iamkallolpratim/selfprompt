@@ -269,6 +269,62 @@ mypy src
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Troubleshooting
+
+### `ERROR: Package 'selfprompt' requires a different Python: X.Y.Z not in '>=3.9'`
+
+Your active Python is older than 3.9. Check what pip is actually resolving to
+(`python3 --version`), then either switch to a 3.9+ interpreter or point pip
+at one explicitly: `python3.11 -m pip install ...`.
+
+### `pyenv: selfprompt: command not found` (or similar, right after installing)
+
+pyenv's shims need to be told a new console script exists:
+
+```bash
+pyenv rehash
+```
+
+If that alone doesn't fix it, the version pip installed into isn't the
+version pyenv is currently resolving to. Check both:
+
+```bash
+pyenv version          # the version pyenv will actually run
+pyenv versions         # everything installed
+```
+
+A `.python-version` file in the current directory (or any parent directory)
+overrides `pyenv global` — that's the most common cause. Find it with:
+
+```bash
+find . -maxdepth 3 -name ".python-version"
+```
+
+Then either install `selfprompt` into the version that file pins:
+
+```bash
+~/.pyenv/versions/<version-in-that-file>/bin/python -m pip install git+https://github.com/iamkallolpratim/selfprompt.git
+pyenv rehash
+```
+
+or remove/edit the `.python-version` file if you don't need it pinned there.
+
+### Dangerous tool calls keep asking for permission and I'm running unattended
+
+That's `permission_mode: ask` (the default) working as intended — see
+[Safety defaults](#safety-defaults). Set `permission_mode: allow` in
+`.selfprompt/config.yaml`, or pass `--yes` to `selfprompt run`, only in
+environments you trust running unattended.
+
+### I don't have an API key yet and just want to see it run
+
+```bash
+selfprompt run "say hello" --provider mock
+```
+
+The mock provider never makes a network call — good for confirming the
+install itself works before wiring up a real model.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
