@@ -9,13 +9,33 @@ out. It drops into Claude Code, OpenAI Codex, Cursor, Continue, Aider, or a
 bare Python script, because it doesn't assume any of them.
 
 ```bash
-pip install selfprompt
+pip install git+https://github.com/iamkallolpratim/selfprompt.git
 selfprompt init
 selfprompt run "refactor payments/legacy.py to remove the global singleton, keep tests green" --provider anthropic
 ```
 
 That's the whole quickstart. Under two minutes if `ANTHROPIC_API_KEY` is
 already set.
+
+Not on PyPI yet — pick whichever install fits:
+
+```bash
+# From GitHub directly (recommended for most users)
+pip install git+https://github.com/iamkallolpratim/selfprompt.git
+
+# With optional model backends
+pip install "selfprompt[anthropic] @ git+https://github.com/iamkallolpratim/selfprompt.git"
+
+# Local clone, editable (for contributing / hacking on the loop itself)
+git clone https://github.com/iamkallolpratim/selfprompt.git
+cd selfprompt
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+# Build a wheel and share the file directly
+python -m build   # needs: pip install build
+pip install dist/selfprompt-0.1.0-py3-none-any.whl
+```
 
 ## Philosophy
 
@@ -113,7 +133,7 @@ turn — and the next run, next week — sees it.
 ## Quickstart
 
 ```bash
-pip install selfprompt              # add [anthropic] or [openai] for real model backends
+pip install git+https://github.com/iamkallolpratim/selfprompt.git   # add [anthropic] or [openai] extras for real model backends
 selfprompt init                     # writes .selfprompt/config.yaml
 selfprompt run "your goal here"     # runs with .selfprompt/config.yaml settings
 selfprompt status                   # list goals with recorded progress

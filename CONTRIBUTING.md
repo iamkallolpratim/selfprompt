@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/your-org/selfprompt
+git clone https://github.com/iamkallolpratim/selfprompt
 cd selfprompt
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
